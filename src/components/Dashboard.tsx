@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [fileContent, setFileContent] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
 
   useEffect(() => {
     setLoading(true);
@@ -109,7 +110,28 @@ export default function Dashboard() {
   const inputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.input, 0);
   const outputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.output, 0);
 
-  const chartData = messagesWithTokens.map((message) => ({
+  const filteredMessages = messagesWithTokens.filter((message) => {
+    if (timeframe === 'all') {
+      return true;
+    }
+    const messageDate = new Date(message.timestamp);
+    const now = new Date();
+    if (timeframe === '15m') {
+      return now.getTime() - messageDate.getTime() < 15 * 60 * 1000;
+    }
+    if (timeframe === '30m') {
+      return now.getTime() - messageDate.getTime() < 30 * 60 * 1000;
+    }
+    if (timeframe === '1h') {
+      return now.getTime() - messageDate.getTime() < 60 * 60 * 1000;
+    }
+    if (timeframe === '24h') {
+      return now.getTime() - messageDate.getTime() < 24 * 60 * 60 * 1000;
+    }
+    return true;
+  });
+
+  const chartData = filteredMessages.map((message) => ({
     name: new Date(message.timestamp).toLocaleTimeString(),
     total: message.tokens.total,
     input: message.tokens.input,
@@ -173,9 +195,43 @@ export default function Dashboard() {
                 <p className="text-3xl">{outputTokens}</p>
               </div>
               <div className="col-span-3 row-span-2 bg-gray-800 p-4 rounded-lg">
-                <h3 className="text-lg">Token Usage Over Time</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg">Token Usage Over Time</h3>
+                  <div className="flex space-x-2">
+                    <button
+                      className={`px-3 py-1 rounded ${timeframe === '15m' ? 'bg-blue-500' : 'bg-gray-700'}`}
+                      onClick={() => setTimeframe('15m')}
+                    >
+                      15M
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded ${timeframe === '30m' ? 'bg-blue-500' : 'bg-gray-700'}`}
+                      onClick={() => setTimeframe('30m')}
+                    >
+                      30M
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded ${timeframe === '1h' ? 'bg-blue-500' : 'bg-gray-700'}`}
+                      onClick={() => setTimeframe('1h')}
+                    >
+                      1H
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded ${timeframe === '24h' ? 'bg-blue-500' : 'bg-gray-700'}`}
+                      onClick={() => setTimeframe('24h')}
+                    >
+                      24H
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded ${timeframe === 'all' ? 'bg-blue-500' : 'bg-gray-700'}`}
+                      onClick={() => setTimeframe('all')}
+                    >
+                      All
+                    </button>
+                  </div>
+                </div>
                 {fileContent.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="90%">
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
@@ -198,6 +254,7 @@ export default function Dashboard() {
                     <table className="w-full text-left">
                       <thead>
                         <tr>
+                          <th className="p-2">Timestamp</th>
                           <th className="p-2">Type</th>
                           <th className="p-2">Content</th>
                           <th className="p-2">Total Tokens</th>
@@ -206,6 +263,7 @@ export default function Dashboard() {
                       <tbody>
                         {messagesWithTokens.map((message) => (
                           <tr key={message.id}>
+                            <td className="p-2">{new Date(message.timestamp).toLocaleString()}</td>
                             <td className="p-2">{message.type}</td>
                             <td className="p-2">{message.content.slice(0, 100)}...</td>
                             <td className="p-2">{message.tokens.total}</td>
