@@ -113,6 +113,7 @@ export default function Dashboard() {
     setSelectedFile(e.target.value);
   };
 
+  const allMessages = fileContent;
   const messagesWithTokens = fileContent.filter((message) => message.tokens);
 
   const totalTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.total, 0);
@@ -308,12 +309,12 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {messagesWithTokens.slice().reverse().map((message) => (
-                          <tr key={message.id} className={message.tokens.total > tokenThreshold ? 'bg-red-900' : ''}>
+                        {allMessages.slice().reverse().map((message) => (
+                          <tr key={message.id} className={message.tokens && message.tokens.total > tokenThreshold ? 'bg-red-900' : ''}>
                             <td className="p-2">{new Date(message.timestamp).toLocaleString()}</td>
                             <td className="p-2">{message.type}</td>
                             <td className="p-2">{message.content.slice(0, 100)}...</td>
-                            <td className="p-2">{message.tokens.total.toLocaleString()}</td>
+                            <td className="p-2">{message.tokens ? message.tokens.total.toLocaleString() : 'N/A'}</td>
                           </tr>
                         ))}
                       </tbody>
