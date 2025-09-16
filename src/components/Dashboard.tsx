@@ -24,8 +24,13 @@ interface Message {
   model: string;
 }
 
+interface Session {
+  name: string;
+  createdAt: string;
+}
+
 export default function Dashboard() {
-  const [sessions, setSessions] = useState<string[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [files, setFiles] = useState<string[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<string>('');
@@ -111,7 +116,7 @@ export default function Dashboard() {
       .then((data) => {
         setSessions(data);
         if (data.length > 0 && !selectedSession) {
-          setSelectedSession(data[0]);
+          setSelectedSession(data[0].name);
         }
         setSessionsLoading(false);
       })
@@ -303,8 +308,8 @@ export default function Dashboard() {
           >
             <option value="">{sessionsLoading ? 'Loading...' : 'Select a session'}</option>
             {sessions.map((session) => (
-              <option key={session} value={session}>
-                {session}
+              <option key={session.name} value={session.name}>
+                {session.name}
               </option>
             ))}
           </select>

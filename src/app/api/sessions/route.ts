@@ -23,7 +23,7 @@ export async function GET() {
 
     directories.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-    return NextResponse.json(directories.map((dir) => dir.name));
+    return NextResponse.json(directories.map((dir) => ({ name: dir.name, createdAt: dir.createdAt })));
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to read sessions directory' }, { status: 500 });
