@@ -335,6 +335,8 @@ export default function Dashboard() {
                             <th className="p-2">Timestamp</th>
                             <th className="p-2">Type</th>
                             <th className="p-2">Content</th>
+                            <th className="p-2">Input</th>
+                            <th className="p-2">Output</th>
                             <th className="p-2">Total Tokens</th>
                           </tr>
                         </thead>
@@ -369,6 +371,16 @@ export default function Dashboard() {
                                   </td>
                                   <td className="p-2">{message.type}</td>
                                   <td className="p-2">{message.content.slice(0, 100)}...</td>
+                                  <td className="p-2">
+                                    {message.tokens
+                                      ? message.tokens.input.toLocaleString()
+                                      : 'N/A'}
+                                  </td>
+                                  <td className="p-2">
+                                    {message.tokens
+                                      ? message.tokens.output.toLocaleString()
+                                      : 'N/A'}
+                                  </td>
                                   <td className="p-2">
                                     {message.tokens
                                       ? message.tokens.total.toLocaleString()
