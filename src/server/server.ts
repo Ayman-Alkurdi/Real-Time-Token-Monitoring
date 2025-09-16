@@ -5,6 +5,7 @@ import { FSWatcher } from 'chokidar';
 import chokidar from 'chokidar';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -23,7 +24,7 @@ io.on('connection', (socket) => {
     if (watcher) {
       watcher.close();
     }
-    const fullPath = path.resolve(process.cwd(), '..', 'sessions', filePath.replace('/', '/chats/'));
+    const fullPath = path.join(os.homedir(), '.gemini', 'tmp', filePath.replace('/', '/chats/'));
     watcher = chokidar.watch(fullPath);
     watcher.on('change', async () => {
       const content = await fs.readFile(fullPath, 'utf-8');

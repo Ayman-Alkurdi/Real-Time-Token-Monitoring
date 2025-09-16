@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 
 export async function GET(
   request: Request
@@ -11,7 +12,7 @@ export async function GET(
   const session = pathParts[3];
   const file = pathParts[4];
 
-  const filePath = path.resolve(process.cwd(), '..', 'sessions', session, 'chats', file);
+  const filePath = path.join(os.homedir(), '.gemini', 'tmp', session, 'chats', file);
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     return NextResponse.json(JSON.parse(content));
