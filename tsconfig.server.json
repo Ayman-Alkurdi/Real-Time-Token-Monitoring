@@ -1,0 +1,11 @@
+
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "node",
+    "outDir": "dist",
+    "noEmit": false
+  },
+  "include": ["src/server"]
+}
