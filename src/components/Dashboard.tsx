@@ -110,6 +110,9 @@ export default function Dashboard() {
       .then((res) => res.json())
       .then((data) => {
         setSessions(data);
+        if (data.length > 0 && !selectedSession) {
+          setSelectedSession(data[0]);
+        }
         setSessionsLoading(false);
       })
       .catch(() => {
@@ -125,6 +128,9 @@ export default function Dashboard() {
         .then((res) => res.json())
         .then((data) => {
           setFiles(data);
+          if (data.length > 0 && !selectedFile) {
+            setSelectedFile(data[0]);
+          }
           setFilesLoading(false);
         })
         .catch(() => {
@@ -309,7 +315,7 @@ export default function Dashboard() {
             disabled={!selectedSession || filesLoading}
           >
             <option value="">{filesLoading ? 'Loading...' : 'Select a file'}</option>
-            {files.slice().reverse().map((file) => (
+            {files.map((file) => (
               <option key={file} value={file}>
                 {file}
               </option>

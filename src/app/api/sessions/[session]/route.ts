@@ -15,9 +15,21 @@ export async function GET(
   const sessionDir = path.join(process.env.MONITORING_DIR || path.join(os.homedir(), '.gemini', 'tmp'), session, 'chats');
   try {
     const dirents = await fs.readdir(sessionDir, { withFileTypes: true });
-    const files = dirents
-      .filter((dirent) => dirent.isFile() && dirent.name.endsWith('.json'))
-      .map((dirent) => dirent.name);
+    const filesWithStats = await Promise.all(
+      dirents
+        .filter((dirent) => dirent.isFile() && dirent.name.endsWith('.json'))
+        .map(async (dirent) => {
+          const fullPath = path.join(sessionDir, dirent.name);
+          const stats = await fs.stat(fullPath);
+          return {
+            name: dirent.name,
+            createdAt: stats.birthtime,
+          };
+        })
+    );
+
+    filesWithStats.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const files = filesWithStats.map((file) => file.name);
 
     if (filesOnly) {
       return NextResponse.json(files);
