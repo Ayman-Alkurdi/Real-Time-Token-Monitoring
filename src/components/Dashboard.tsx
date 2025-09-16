@@ -138,7 +138,7 @@ const RecentActivityWidget = ({ allMessages, searchTerm, setSearchTerm, expanded
           </tr>
         </thead>
         <tbody>
-          {allMessages.slice().reverse().map((message, index) => (
+          {allMessages.map((message, index) => (
             <React.Fragment key={`${message.id}-${index}`}>
               <tr
                 className={
@@ -318,7 +318,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  const allMessages = fileContent;
+  const allMessages = [...fileContent].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   const messagesWithTokens = fileContent.filter((message) => message.tokens);
 
   const totalTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.total, 0);

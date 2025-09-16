@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "name": "Total token ",
+    "metric": "total_token",
+    "operator": ">",
+    "value": 10,
+    "filePath": "session-2025-09-15T22-38-64eefcac.json",
+    "enabled": true
+  },
+  {
+    "id": 2,
+    "name": "cost ",
+    "metric": "total_token",
+    "operator": ">",
+    "value": 1,
+    "filePath": "69390cb08d3693e82046c4a2921575f41aa9b5eb9153c8877327ccd56c1e4c97",
+    "enabled": true
+  },
+  {
+    "id": 3,
+    "name": "test",
+    "metric": "total_token",
+    "operator": "<",
+    "value": 50,
+    "filePath": "69390cb08d3693e82046c4a2921575f41aa9b5eb9153c8877327ccd56c1e4c97",
+    "enabled": true
+  }
+]
