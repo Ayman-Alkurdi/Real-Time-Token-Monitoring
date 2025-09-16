@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -30,47 +30,113 @@ export default function Dashboard() {
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [fileContent, setFileContent] = useState<Message[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [sessionsLoading, setSessionsLoading] = useState<boolean>(true);
+  const [filesLoading, setFilesLoading] = useState<boolean>(false);
+  const [contentLoading, setContentLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
   const [tokenThreshold, setTokenThreshold] = useState<number>(35000);
+  const [inputTokenPrice, setInputTokenPrice] = useState<number>(0.625); // Price per 1 million tokens
+  const [outputTokenPrice, setOutputTokenPrice] = useState<number>(5.00); // Price per 1 million tokens
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [lineVisibility, setLineVisibility] = useState({
+    total: true,
+    input: true,
+    output: true,
+  });
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setLoading(true);
+  const handleExport = () => {
+    const dataToExport = {
+      kpis: {
+        totalTokens,
+        inputTokens,
+        outputTokens,
+        totalCost,
+        averageTokensPerTurn,
+        mostExpensiveTurn,
+      },
+      chartData,
+      log: allMessages,
+    };
+
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${selectedSession || 'session'}_${selectedFile || 'data'}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRefresh = () => {
+    setSessionsLoading(true);
     fetch('/api/sessions')
       .then((res) => res.json())
       .then((data) => {
         setSessions(data);
-        setLoading(false);
+        setSessionsLoading(false);
       })
       .catch(() => {
         setError('Failed to fetch sessions.');
-        setLoading(false);
+        setSessionsLoading(false);
+      });
+
+    if (selectedSession) {
+      setFilesLoading(true);
+      fetch(`/api/sessions/${selectedSession}?files=true`)
+        .then((res) => res.json())
+        .then((data) => {
+          setFiles(data);
+          setFilesLoading(false);
+        })
+        .catch(() => {
+          setError('Failed to fetch files.');
+          setFilesLoading(false);
+        });
+    }
+  };
+
+
+
+  useEffect(() => {
+    setSessionsLoading(true);
+    fetch('/api/sessions')
+      .then((res) => res.json())
+      .then((data) => {
+        setSessions(data);
+        setSessionsLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to fetch sessions.');
+        setSessionsLoading(false);
       });
   }, []);
 
   useEffect(() => {
     if (selectedSession) {
-      setLoading(true);
+      setFilesLoading(true);
       fetch(`/api/sessions/${selectedSession}?files=true`) // Fetch file list
         .then((res) => res.json())
         .then((data) => {
           setFiles(data);
-          setLoading(false);
+          setFilesLoading(false);
         })
         .catch(() => {
           setError('Failed to fetch files.');
-          setLoading(false);
+          setFilesLoading(false);
         });
     }
   }, [selectedSession]);
 
   useEffect(() => {
     if (selectedSession) {
-      setLoading(true);
+      setContentLoading(true);
       let url = `/api/sessions/${selectedSession}`;
       if (selectedFile) {
         url = `/api/sessions/${selectedSession}/${selectedFile}`;
@@ -80,11 +146,11 @@ export default function Dashboard() {
         .then((res) => res.json())
         .then((data) => {
           setFileContent(data.messages || []);
-          setLoading(false);
+          setContentLoading(false);
         })
         .catch(() => {
           setError('Failed to fetch file content.');
-          setLoading(false);
+          setContentLoading(false);
         });
 
       if (selectedFile) {
@@ -94,6 +160,15 @@ export default function Dashboard() {
       }
     }
   }, [selectedSession, selectedFile]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      handleRefresh();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedSession]);
+
 
   useEffect(() => {
     socket.on('fileUpdate', (content) => {
@@ -135,12 +210,17 @@ export default function Dashboard() {
   const totalTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.total, 0);
   const inputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.input, 0);
   const outputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.output, 0);
+  const averageTokensPerTurn = messagesWithTokens.length > 0
+    ? Math.round(totalTokens / messagesWithTokens.length)
+    : 0;
 
-  const INPUT_TOKEN_PRICE = 0.625; // Price per 1 million tokens
-  const OUTPUT_TOKEN_PRICE = 5.00; // Price per 1 million tokens
+  const mostExpensiveTurn = messagesWithTokens.reduce((max, message) =>
+    message.tokens.total > (max ? max.tokens.total : 0) ? message : max,
+    null as Message | null
+  );
 
-  const inputCost = (inputTokens / 1000000) * INPUT_TOKEN_PRICE;
-  const outputCost = (outputTokens / 1000000) * OUTPUT_TOKEN_PRICE;
+  const inputCost = (inputTokens / 1000000) * inputTokenPrice;
+  const outputCost = (outputTokens / 1000000) * outputTokenPrice;
   const totalCost = inputCost + outputCost;
 
   const filteredMessages = messagesWithTokens.filter((message) => {
@@ -168,6 +248,21 @@ export default function Dashboard() {
     return tickItem.toLocaleString();
   };
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="p-2 bg-gray-800 border border-gray-700 rounded">
+          <p className="label text-white">{`Turn : ${label}`}</p>
+          {payload[0] && <p className="intro text-blue-400">{`Total : ${payload[0].value.toLocaleString()}`}</p>}
+          {payload[1] && <p className="intro text-green-400">{`Input : ${payload[1].value.toLocaleString()}`}</p>}
+          {payload[2] && <p className="intro text-yellow-400">{`Output : ${payload[2].value.toLocaleString()}`}</p>}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   const chartData = filteredMessages.map((message) => ({
     name: new Date(message.timestamp).toLocaleTimeString(),
     total: message.tokens.total,
@@ -180,12 +275,27 @@ export default function Dashboard() {
       <header className="bg-gray-800 text-white p-4 flex justify-between items-center">
         <h1 className="text-2xl">Real-Time Token Monitoring</h1>
         <div className="flex items-center space-x-4">
+          <a href="/overview">
+            <button
+              className="bg-gray-700 p-2 rounded"
+            >
+              Overview
+            </button>
+          </a>
+          <button
+            className="bg-gray-700 p-2 rounded"
+            onClick={handleExport}
+            disabled={!selectedSession}
+          >
+            Export
+          </button>
           <select
             className="bg-gray-700 p-2 rounded"
             value={selectedSession}
             onChange={handleSessionChange}
+            disabled={sessionsLoading}
           >
-            <option value="">Select a session</option>
+            <option value="">{sessionsLoading ? 'Loading...' : 'Select a session'}</option>
             {sessions.map((session) => (
               <option key={session} value={session}>
                 {session}
@@ -196,15 +306,21 @@ export default function Dashboard() {
             className="bg-gray-700 p-2 rounded"
             value={selectedFile}
             onChange={handleFileChange}
-            disabled={!selectedSession}
+            disabled={!selectedSession || filesLoading}
           >
-            <option value="">Select a file</option>
+            <option value="">{filesLoading ? 'Loading...' : 'Select a file'}</option>
             {files.slice().reverse().map((file) => (
               <option key={file} value={file}>
                 {file}
               </option>
             ))}
           </select>
+          <button
+            className="bg-gray-700 p-2 rounded"
+            onClick={handleRefresh}
+          >
+            Refresh
+          </button>
           <div className="relative" ref={settingsRef}>
             <button
               className="bg-gray-700 p-2 rounded"
@@ -224,6 +340,26 @@ export default function Dashboard() {
                   value={tokenThreshold}
                   onChange={(e) => setTokenThreshold(Number(e.target.value))}
                 />
+                <label htmlFor="inputTokenPrice" className="block mb-2 mt-4">
+                  Input Token Price (/million)
+                </label>
+                <input
+                  type="number"
+                  id="inputTokenPrice"
+                  className="w-full bg-gray-600 p-2 rounded"
+                  value={inputTokenPrice}
+                  onChange={(e) => setInputTokenPrice(Number(e.target.value))}
+                />
+                <label htmlFor="outputTokenPrice" className="block mb-2 mt-4">
+                  Output Token Price (/million)
+                </label>
+                <input
+                  type="number"
+                  id="outputTokenPrice"
+                  className="w-full bg-gray-600 p-2 rounded"
+                  value={outputTokenPrice}
+                  onChange={(e) => setOutputTokenPrice(Number(e.target.value))}
+                />
               </div>
             )}
           </div>
@@ -231,9 +367,16 @@ export default function Dashboard() {
       </header>
       <main className="flex-1 p-4">
         <section className="grid grid-cols-1 md:grid-cols-4 gap-4 h-full">
-          {loading && <p>Loading...</p>}
           {error && <p className="text-red-500">{error}</p>}
-          {!loading && !error && (
+          {!error && !selectedSession && (
+            <div className="flex flex-col items-center justify-center h-full col-span-4">
+              <img src="/globe.svg" alt="Globe" className="w-32 h-32 mb-4" />
+              <h2 className="text-3xl mb-2">Welcome to Real-Time Token Monitoring</h2>
+              <p className="text-lg text-gray-400">Select a session from the dropdown above to get started.</p>
+            </div>
+          )}
+          {!error && selectedSession && contentLoading && <p>Loading content...</p>}
+          {!error && selectedSession && !contentLoading && (
             <>
               {/* Left Column */}
               <div className="md:col-span-1 flex flex-col gap-4">
@@ -245,19 +388,32 @@ export default function Dashboard() {
                   <h3 className="text-base">Input Tokens</h3>
                   <p className="text-2xl">{inputTokens.toLocaleString()}</p>
                   <p className="text-sm text-gray-400">
-                    Cost: ${inputCost.toFixed(2)} (@ ${INPUT_TOKEN_PRICE}/million)
+                    Cost: ${inputCost.toFixed(2)} (@ ${inputTokenPrice}/million)
                   </p>
                 </div>
                 <div className="bg-gray-800 p-2 rounded-lg">
                   <h3 className="text-base">Output Tokens</h3>
                   <p className="text-2xl">{outputTokens.toLocaleString()}</p>
                   <p className="text-sm text-gray-400">
-                    Cost: ${outputCost.toFixed(2)} (@ ${OUTPUT_TOKEN_PRICE}/million)
+                    Cost: ${outputCost.toFixed(2)} (@ ${outputTokenPrice}/million)
                   </p>
                 </div>
                 <div className="bg-gray-800 p-2 rounded-lg">
                   <h3 className="text-base">Total Estimated Cost</h3>
                   <p className="text-2xl">${totalCost.toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-800 p-2 rounded-lg">
+                  <h3 className="text-base">Average Tokens per Turn</h3>
+                  <p className="text-2xl">{averageTokensPerTurn.toLocaleString()}</p>
+                </div>
+                <div className="bg-gray-800 p-2 rounded-lg">
+                  <h3 className="text-base">Most Expensive Turn</h3>
+                  <p className="text-2xl">
+                    {mostExpensiveTurn ? mostExpensiveTurn.tokens.total.toLocaleString() : 'N/A'}
+                  </p>
+                  <p className="text-sm text-gray-400 truncate">
+                    {mostExpensiveTurn ? mostExpensiveTurn.content : ''}
+                  </p>
                 </div>
               </div>
 
@@ -305,16 +461,36 @@ export default function Dashboard() {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis tickFormatter={formatYAxis} />
-                        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                        <Tooltip content={<CustomTooltip />} />
                         <Legend verticalAlign="top" align="right" />
-                        <Line type="monotone" dataKey="total" stroke="#8884d8" />
-                        <Line type="monotone" dataKey="input" stroke="#82ca9d" />
-                        <Line type="monotone" dataKey="output" stroke="#ffc658" />
+                        {lineVisibility.total && <Line type="monotone" dataKey="total" stroke="#8884d8" />}
+                        {lineVisibility.input && <Line type="monotone" dataKey="input" stroke="#82ca9d" />}
+                        {lineVisibility.output && <Line type="monotone" dataKey="output" stroke="#ffc658" />}
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
                     <p>No data to display.</p>
                   )}
+                  <div className="flex justify-center space-x-4 mt-4">
+                    <button
+                      className={`px-3 py-1 rounded ${lineVisibility.total ? 'bg-blue-500' : 'bg-gray-700'}`}
+                      onClick={() => setLineVisibility(prev => ({ ...prev, total: !prev.total }))}
+                    >
+                      Total
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded ${lineVisibility.input ? 'bg-green-500' : 'bg-gray-700'}`}
+                      onClick={() => setLineVisibility(prev => ({ ...prev, input: !prev.input }))}
+                    >
+                      Input
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded ${lineVisibility.output ? 'bg-yellow-500' : 'bg-gray-700'}`}
+                      onClick={() => setLineVisibility(prev => ({ ...prev, output: !prev.output }))}
+                    >
+                      Output
+                    </button>
+                  </div>
                 </div>
                 <div className="bg-gray-800 p-4 rounded-lg flex flex-col flex-1">
                   <div className="flex justify-between items-center mb-2">
@@ -345,48 +521,52 @@ export default function Dashboard() {
                             let messagesToDisplay = allMessages;
                             if (searchTerm.trim() !== '') {
                               const lowerCaseSearchTerm = searchTerm.toLowerCase();
-                              const foundIndex = allMessages.findIndex((msg) =>
+                              messagesToDisplay = allMessages.filter((msg) =>
                                 msg.content.toLowerCase().includes(lowerCaseSearchTerm)
                               );
-                              if (foundIndex !== -1) {
-                                messagesToDisplay = allMessages.slice(foundIndex);
-                              } else {
-                                messagesToDisplay = [];
-                              }
                             }
                             return messagesToDisplay
                               .slice()
                               .reverse()
                               .map((message, index) => (
-                                <tr
-                                  key={`${message.id}-${index}`}
-                                  className={
-                                    message.tokens && message.tokens.total > tokenThreshold
-                                      ? 'bg-red-900'
-                                      : ''
-                                  }
-                                >
-                                  <td className="p-2">
-                                    {new Date(message.timestamp).toLocaleString()}
-                                  </td>
-                                  <td className="p-2">{message.type}</td>
-                                  <td className="p-2">{message.content.slice(0, 100)}...</td>
-                                  <td className="p-2">
-                                    {message.tokens
-                                      ? message.tokens.input.toLocaleString()
-                                      : 'N/A'}
-                                  </td>
-                                  <td className="p-2">
-                                    {message.tokens
-                                      ? message.tokens.output.toLocaleString()
-                                      : 'N/A'}
-                                  </td>
-                                  <td className="p-2">
-                                    {message.tokens
-                                      ? message.tokens.total.toLocaleString()
-                                      : 'N/A'}
-                                  </td>
-                                </tr>
+                                <React.Fragment key={`${message.id}-${index}`}>
+                                  <tr
+                                    className={
+                                      message.tokens && message.tokens.total > tokenThreshold
+                                        ? 'bg-red-900 cursor-pointer'
+                                        : 'cursor-pointer'
+                                    }
+                                    onClick={() => setExpandedRow(expandedRow === message.id ? null : message.id)}
+                                  >
+                                    <td className="p-2">
+                                      {new Date(message.timestamp).toLocaleString()}
+                                    </td>
+                                    <td className="p-2">{message.type}</td>
+                                    <td className="p-2">{message.content.slice(0, 100)}...</td>
+                                    <td className="p-2">
+                                      {message.tokens
+                                        ? message.tokens.input.toLocaleString()
+                                        : 'N/A'}
+                                    </td>
+                                    <td className="p-2">
+                                      {message.tokens
+                                        ? message.tokens.output.toLocaleString()
+                                        : 'N/A'}
+                                    </td>
+                                    <td className="p-2">
+                                      {message.tokens
+                                        ? message.tokens.total.toLocaleString()
+                                        : 'N/A'}
+                                    </td>
+                                  </tr>
+                                  {expandedRow === message.id && (
+                                    <tr>
+                                      <td colSpan={6} className="p-4 bg-gray-900">
+                                        <pre>{message.content}</pre>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
                               ));
                           })()}
                         </tbody>

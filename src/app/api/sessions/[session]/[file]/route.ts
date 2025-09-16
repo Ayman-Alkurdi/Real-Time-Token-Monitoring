@@ -12,7 +12,7 @@ export async function GET(
   const session = pathParts[3];
   const file = pathParts[4];
 
-  const filePath = path.join(os.homedir(), '.gemini', 'tmp', session, 'chats', file);
+  const filePath = path.join(process.env.MONITORING_DIR || path.join(os.homedir(), '.gemini', 'tmp'), session, 'chats', file);
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     return NextResponse.json(JSON.parse(content));

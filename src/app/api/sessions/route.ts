@@ -5,7 +5,7 @@ import path from 'path';
 import os from 'os';
 
 export async function GET() {
-  const sessionsDir = path.join(os.homedir(), '.gemini', 'tmp');
+  const sessionsDir = process.env.MONITORING_DIR || path.join(os.homedir(), '.gemini', 'tmp');
   try {
     const dirents = await fs.readdir(sessionsDir, { withFileTypes: true });
     const directories = dirents

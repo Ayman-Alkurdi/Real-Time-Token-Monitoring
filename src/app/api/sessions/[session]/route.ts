@@ -12,7 +12,7 @@ export async function GET(
   const session = pathParts[3];
   const filesOnly = url.searchParams.get('files') === 'true';
 
-  const sessionDir = path.join(os.homedir(), '.gemini', 'tmp', session, 'chats');
+  const sessionDir = path.join(process.env.MONITORING_DIR || path.join(os.homedir(), '.gemini', 'tmp'), session, 'chats');
   try {
     const dirents = await fs.readdir(sessionDir, { withFileTypes: true });
     const files = dirents
