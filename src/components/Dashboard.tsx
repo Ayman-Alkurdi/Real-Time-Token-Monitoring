@@ -355,9 +355,9 @@ export default function Dashboard() {
                             return messagesToDisplay
                               .slice()
                               .reverse()
-                              .map((message) => (
+                              .map((message, index) => (
                                 <tr
-                                  key={message.id}
+                                  key={`${message.id}-${index}`}
                                   className={
                                     message.tokens && message.tokens.total > tokenThreshold
                                       ? 'bg-red-900'
