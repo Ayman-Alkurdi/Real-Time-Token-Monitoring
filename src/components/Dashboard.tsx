@@ -199,7 +199,7 @@ export default function Dashboard() {
             disabled={!selectedSession}
           >
             <option value="">Select a file</option>
-            {files.map((file) => (
+            {files.slice().reverse().map((file) => (
               <option key={file} value={file}>
                 {file}
               </option>
