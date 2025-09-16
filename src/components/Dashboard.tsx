@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
   const [tokenThreshold, setTokenThreshold] = useState<number>(20000);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const settingsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -316,7 +317,16 @@ export default function Dashboard() {
                   )}
                 </div>
                 <div className="bg-gray-800 p-4 rounded-lg flex flex-col flex-1">
-                  <h3 className="text-lg mb-2">Recent Activity</h3>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg">Recent Activity</h3>
+                    <input
+                      type="text"
+                      placeholder="Search content..."
+                      className="bg-gray-700 p-2 rounded"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
                   {fileContent.length > 0 ? (
                     <div className="overflow-y-auto flex-1">
                       <table className="w-full text-left">
@@ -329,26 +339,44 @@ export default function Dashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {allMessages
-                            .slice()
-                            .reverse()
-                            .map((message) => (
-                              <tr
-                                key={message.id}
-                                className={
-                                  message.tokens && message.tokens.total > tokenThreshold
-                                    ? 'bg-red-900'
-                                    : ''
-                                }
-                              >
-                                <td className="p-2">{new Date(message.timestamp).toLocaleString()}</td>
-                                <td className="p-2">{message.type}</td>
-                                <td className="p-2">{message.content.slice(0, 100)}...</td>
-                                <td className="p-2">
-                                  {message.tokens ? message.tokens.total.toLocaleString() : 'N/A'}
-                                </td>
-                              </tr>
-                            ))}
+                          {(() => {
+                            let messagesToDisplay = allMessages;
+                            if (searchTerm.trim() !== '') {
+                              const lowerCaseSearchTerm = searchTerm.toLowerCase();
+                              const foundIndex = allMessages.findIndex((msg) =>
+                                msg.content.toLowerCase().includes(lowerCaseSearchTerm)
+                              );
+                              if (foundIndex !== -1) {
+                                messagesToDisplay = allMessages.slice(foundIndex);
+                              } else {
+                                messagesToDisplay = [];
+                              }
+                            }
+                            return messagesToDisplay
+                              .slice()
+                              .reverse()
+                              .map((message) => (
+                                <tr
+                                  key={message.id}
+                                  className={
+                                    message.tokens && message.tokens.total > tokenThreshold
+                                      ? 'bg-red-900'
+                                      : ''
+                                  }
+                                >
+                                  <td className="p-2">
+                                    {new Date(message.timestamp).toLocaleString()}
+                                  </td>
+                                  <td className="p-2">{message.type}</td>
+                                  <td className="p-2">{message.content.slice(0, 100)}...</td>
+                                  <td className="p-2">
+                                    {message.tokens
+                                      ? message.tokens.total.toLocaleString()
+                                      : 'N/A'}
+                                  </td>
+                                </tr>
+                              ));
+                          })()}
                         </tbody>
                       </table>
                     </div>
