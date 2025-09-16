@@ -33,7 +33,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
-  const [tokenThreshold, setTokenThreshold] = useState<number>(4000);
+  const [tokenThreshold, setTokenThreshold] = useState<number>(20000);
 
   useEffect(() => {
     setLoading(true);
@@ -119,7 +119,12 @@ export default function Dashboard() {
   const inputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.input, 0);
   const outputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.output, 0);
 
+  const INPUT_TOKEN_PRICE = 0.625; // Price per 1 million tokens
+  const OUTPUT_TOKEN_PRICE = 5.00; // Price per 1 million tokens
 
+  const inputCost = (inputTokens / 1000000) * INPUT_TOKEN_PRICE;
+  const outputCost = (outputTokens / 1000000) * OUTPUT_TOKEN_PRICE;
+  const totalCost = inputCost + outputCost;
 
   const filteredMessages = messagesWithTokens.filter((message) => {
     if (timeframe === 'all') {
@@ -221,6 +226,20 @@ export default function Dashboard() {
               <div className="col-span-1 bg-gray-800 p-4 rounded-lg">
                 <h3 className="text-lg">Output Tokens</h3>
                 <p className="text-3xl">{outputTokens.toLocaleString()}</p>
+              </div>
+              <div className="col-span-1 bg-gray-800 p-4 rounded-lg">
+                <h3 className="text-lg">Total Estimated Cost</h3>
+                <p className="text-3xl">${totalCost.toFixed(2)}</p>
+              </div>
+              <div className="col-span-1 bg-gray-800 p-4 rounded-lg">
+                <h3 className="text-lg">Input Token Cost</h3>
+                <p className="text-3xl">${inputCost.toFixed(2)}</p>
+                <p className="text-sm text-gray-400">@ ${INPUT_TOKEN_PRICE}/million</p>
+              </div>
+              <div className="col-span-1 bg-gray-800 p-4 rounded-lg">
+                <h3 className="text-lg">Output Token Cost</h3>
+                <p className="text-3xl">${outputCost.toFixed(2)}</p>
+                <p className="text-sm text-gray-400">@ ${OUTPUT_TOKEN_PRICE}/million</p>
               </div>
               <div className="col-span-3 row-span-2 bg-gray-800 p-4 rounded-lg">
                 <div className="flex justify-between items-center mb-4">
