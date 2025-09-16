@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
+  const [tokenThreshold, setTokenThreshold] = useState<number>(4000);
 
   useEffect(() => {
     setLoading(true);
@@ -118,6 +119,8 @@ export default function Dashboard() {
   const inputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.input, 0);
   const outputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.output, 0);
 
+
+
   const filteredMessages = messagesWithTokens.filter((message) => {
     if (timeframe === 'all') {
       return true;
@@ -138,6 +141,10 @@ export default function Dashboard() {
     }
     return true;
   });
+
+  const formatYAxis = (tickItem: number) => {
+    return tickItem.toLocaleString();
+  };
 
   const chartData = filteredMessages.map((message) => ({
     name: new Date(message.timestamp).toLocaleTimeString(),
@@ -184,6 +191,19 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
+          <h2 className="text-xl mb-4">Settings</h2>
+          <div>
+            <label htmlFor="tokenThreshold" className="block mb-2">
+              Token Threshold
+            </label>
+            <input
+              type="number"
+              id="tokenThreshold"
+              className="w-full bg-gray-700 p-2 rounded"
+              value={tokenThreshold}
+              onChange={(e) => setTokenThreshold(Number(e.target.value))}
+            />
+          </div>
         </aside>
         <section className="flex-1 grid grid-cols-3 grid-rows-3 gap-4">
           {loading && <p>Loading...</p>}
@@ -192,15 +212,15 @@ export default function Dashboard() {
             <>
               <div className="col-span-1 bg-gray-800 p-4 rounded-lg">
                 <h3 className="text-lg">Total Tokens</h3>
-                <p className="text-3xl">{totalTokens}</p>
+                <p className="text-3xl">{totalTokens.toLocaleString()}</p>
               </div>
               <div className="col-span-1 bg-gray-800 p-4 rounded-lg">
                 <h3 className="text-lg">Input Tokens</h3>
-                <p className="text-3xl">{inputTokens}</p>
+                <p className="text-3xl">{inputTokens.toLocaleString()}</p>
               </div>
               <div className="col-span-1 bg-gray-800 p-4 rounded-lg">
                 <h3 className="text-lg">Output Tokens</h3>
-                <p className="text-3xl">{outputTokens}</p>
+                <p className="text-3xl">{outputTokens.toLocaleString()}</p>
               </div>
               <div className="col-span-3 row-span-2 bg-gray-800 p-4 rounded-lg">
                 <div className="flex justify-between items-center mb-4">
@@ -243,8 +263,8 @@ export default function Dashboard() {
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
+                      <YAxis tickFormatter={formatYAxis} />
+                      <Tooltip formatter={(value: number) => value.toLocaleString()} />
                       <Legend />
                       <Line type="monotone" dataKey="total" stroke="#8884d8" />
                       <Line type="monotone" dataKey="input" stroke="#82ca9d" />
@@ -269,12 +289,12 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {messagesWithTokens.map((message) => (
-                          <tr key={message.id}>
+                        {messagesWithTokens.slice().reverse().map((message) => (
+                          <tr key={message.id} className={message.tokens.total > tokenThreshold ? 'bg-red-900' : ''}>
                             <td className="p-2">{new Date(message.timestamp).toLocaleString()}</td>
                             <td className="p-2">{message.type}</td>
                             <td className="p-2">{message.content.slice(0, 100)}...</td>
-                            <td className="p-2">{message.tokens.total}</td>
+                            <td className="p-2">{message.tokens.total.toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
