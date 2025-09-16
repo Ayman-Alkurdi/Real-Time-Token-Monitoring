@@ -35,3 +35,16 @@ body {
   border-right: 3px solid rgba(255, 255, 255, 0.5);
   border-bottom: 3px solid rgba(255, 255, 255, 0.5);
 }
+
+@keyframes highlight {
+  from {
+    background-color: rgba(0, 0, 255, 0.5);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.new-message {
+  animation: highlight 3s ease-out;
+}

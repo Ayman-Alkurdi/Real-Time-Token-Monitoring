@@ -113,7 +113,7 @@ const TokenUsageChartWidget = ({ chartData, lineVisibility, timeframe, setTimefr
   </div>
 );
 
-const RecentActivityWidget = ({ allMessages, searchTerm, setSearchTerm, expandedRow, setExpandedRow, tokenThreshold }: { allMessages: Message[], searchTerm: string, setSearchTerm: (term: string) => void, expandedRow: string | null, setExpandedRow: (id: string | null) => void, tokenThreshold: number }) => (
+const RecentActivityWidget = ({ allMessages, searchTerm, setSearchTerm, expandedRow, setExpandedRow, tokenThreshold, recentMessageIds }: { allMessages: Message[], searchTerm: string, setSearchTerm: (term: string) => void, expandedRow: string | null, setExpandedRow: (id: string | null) => void, tokenThreshold: number, recentMessageIds: string[] }) => (
   <div className="bg-gray-800 p-4 rounded-lg flex flex-col flex-1 h-full">
     <div className="flex justify-between items-center mb-2">
       <h3 className="text-lg">Recent Activity</h3>
@@ -138,14 +138,20 @@ const RecentActivityWidget = ({ allMessages, searchTerm, setSearchTerm, expanded
           </tr>
         </thead>
         <tbody>
-          {allMessages.map((message, index) => (
+          {allMessages.map((message, index) => {
+            const isRecent = recentMessageIds.includes(message.id);
+            let rowClassName = 'cursor-pointer';
+            if (message.tokens && message.tokens.total > tokenThreshold) {
+              rowClassName += ' bg-red-900';
+            }
+            if (isRecent) {
+              rowClassName += ' new-message';
+            }
+
+            return (
             <React.Fragment key={`${message.id}-${index}`}>
               <tr
-                className={
-                  message.tokens && message.tokens.total > tokenThreshold
-                    ? 'bg-red-900 cursor-pointer'
-                    : 'cursor-pointer'
-                }
+                className={rowClassName}
                 onClick={() => setExpandedRow(expandedRow === message.id ? null : message.id)}
               >
                 <td className="p-2">{new Date(message.timestamp).toLocaleString()}</td>
@@ -163,7 +169,7 @@ const RecentActivityWidget = ({ allMessages, searchTerm, setSearchTerm, expanded
                 </tr>
               )}
             </React.Fragment>
-          ))}
+          )})}
         </tbody>
       </table>
     </div>
@@ -190,6 +196,7 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [isLayoutEditable, setIsLayoutEditable] = useState(false);
+  const [recentMessageIds, setRecentMessageIds] = useState<string[]>([]);
   const [lineVisibility, setLineVisibility] = useState({
     total: true,
     input: true,
@@ -310,7 +317,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     socket.on('fileUpdate', (content) => {
-      setFileContent(JSON.parse(content).messages || []);
+      const newMessages = JSON.parse(content).messages || [];
+      setFileContent(currentMessages => {
+        if (newMessages.length > currentMessages.length) {
+          const newMessage = newMessages[newMessages.length - 1];
+          setRecentMessageIds(prev => [...prev, newMessage.id]);
+          setTimeout(() => {
+            setRecentMessageIds(prev => prev.filter(id => id !== newMessage.id));
+          }, 3000); // Highlight for 3 seconds
+        }
+        return newMessages;
+      });
     });
 
     return () => {
@@ -352,7 +369,7 @@ export default function Dashboard() {
     avgTokens: <AverageTokensWidget averageTokensPerTurn={averageTokensPerTurn} />,
     mostExpensiveTurn: <MostExpensiveTurnWidget mostExpensiveTurn={mostExpensiveTurn} />,
     tokenUsageChart: <TokenUsageChartWidget chartData={chartData} lineVisibility={lineVisibility} timeframe={timeframe} setTimeframe={setTimeframe} />,
-    recentActivity: <RecentActivityWidget allMessages={allMessages} searchTerm={searchTerm} setSearchTerm={setSearchTerm} expandedRow={expandedRow} setExpandedRow={setExpandedRow} tokenThreshold={tokenThreshold} />,
+    recentActivity: <RecentActivityWidget allMessages={allMessages} searchTerm={searchTerm} setSearchTerm={setSearchTerm} expandedRow={expandedRow} setExpandedRow={setExpandedRow} tokenThreshold={tokenThreshold} recentMessageIds={recentMessageIds} />,
   };
 
   return (
