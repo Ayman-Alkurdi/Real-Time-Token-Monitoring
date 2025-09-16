@@ -51,7 +51,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (selectedSession) {
       setLoading(true);
-      fetch(`/api/sessions/${selectedSession}`)
+      fetch(`/api/sessions/${selectedSession}?files=true`) // Fetch file list
         .then((res) => res.json())
         .then((data) => {
           setFiles(data);
@@ -65,10 +65,14 @@ export default function Dashboard() {
   }, [selectedSession]);
 
   useEffect(() => {
-    if (selectedSession && selectedFile) {
+    if (selectedSession) {
       setLoading(true);
-      const filePath = `${selectedSession}/${selectedFile}`;
-      fetch(`/api/sessions/${filePath}`)
+      let url = `/api/sessions/${selectedSession}`;
+      if (selectedFile) {
+        url = `/api/sessions/${selectedSession}/${selectedFile}`;
+      }
+
+      fetch(url)
         .then((res) => res.json())
         .then((data) => {
           setFileContent(data.messages || []);
@@ -78,8 +82,12 @@ export default function Dashboard() {
           setError('Failed to fetch file content.');
           setLoading(false);
         });
-      console.log('Emitting watchFile with path:', filePath); // Added for debugging
-      socket.emit('watchFile', filePath);
+
+      if (selectedFile) {
+        const filePath = `${selectedSession}/${selectedFile}`;
+        console.log('Emitting watchFile with path:', filePath); // Added for debugging
+        socket.emit('watchFile', filePath);
+      }
     }
   }, [selectedSession, selectedFile]);
 
