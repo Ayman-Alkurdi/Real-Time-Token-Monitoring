@@ -33,7 +33,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
-  const [tokenThreshold, setTokenThreshold] = useState<number>(20000);
+  const [tokenThreshold, setTokenThreshold] = useState<number>(35000);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const settingsRef = useRef<HTMLDivElement>(null);
