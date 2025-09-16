@@ -77,12 +77,14 @@ export default function Dashboard() {
           setError('Failed to fetch file content.');
           setLoading(false);
         });
+      console.log('Emitting watchFile with path:', filePath); // Added for debugging
       socket.emit('watchFile', filePath);
     }
   }, [selectedSession, selectedFile]);
 
   useEffect(() => {
     socket.on('fileUpdate', (content) => {
+      console.log('Received fileUpdate:', content); // Added for debugging
       setFileContent(JSON.parse(content).messages || []);
     });
 

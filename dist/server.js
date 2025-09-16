@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import chokidar from 'chokidar';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 const httpServer = createServer();
 const io = new Server(httpServer, {
     cors: {
@@ -17,9 +18,11 @@ io.on('connection', (socket) => {
         if (watcher) {
             watcher.close();
         }
-        const fullPath = path.resolve(process.cwd(), '..', 'sessions', filePath);
+        const fullPath = path.join(os.homedir(), '.gemini', 'tmp', filePath.replace('/', '/chats/'));
+        console.log('Watching file:', fullPath); // Added for debugging
         watcher = chokidar.watch(fullPath);
         watcher.on('change', async () => {
+            console.log('File changed:', fullPath); // Added for debugging
             const content = await fs.readFile(fullPath, 'utf-8');
             socket.emit('fileUpdate', content);
         });

@@ -25,8 +25,10 @@ io.on('connection', (socket) => {
       watcher.close();
     }
     const fullPath = path.join(os.homedir(), '.gemini', 'tmp', filePath.replace('/', '/chats/'));
+    console.log('Watching file:', fullPath); // Added for debugging
     watcher = chokidar.watch(fullPath);
     watcher.on('change', async () => {
+      console.log('File changed:', fullPath); // Added for debugging
       const content = await fs.readFile(fullPath, 'utf-8');
       socket.emit('fileUpdate', content);
     });
