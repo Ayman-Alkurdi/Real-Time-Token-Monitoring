@@ -348,7 +348,7 @@ export default function Dashboard() {
   const outputCost = (outputTokens / 1000000) * outputTokenPrice;
   const totalCost = inputCost + outputCost;
 
-  const chartData = messagesWithTokens.map((message) => ({
+  const chartData = [...messagesWithTokens].reverse().map((message) => ({
     name: new Date(message.timestamp).toLocaleTimeString(),
     total: message.tokens.total,
     input: message.tokens.input,
