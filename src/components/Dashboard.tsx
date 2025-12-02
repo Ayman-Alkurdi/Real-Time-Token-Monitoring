@@ -371,6 +371,12 @@ export default function Dashboard() {
     }));
   }, [messagesWithTokens, timeframe]);
 
+  const filteredMessages = useMemo(() => {
+    return allMessages.filter(message => 
+      message.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allMessages, searchTerm]);
+
   const widgetComponents: { [key: string]: React.ReactNode } = {
     totalTokens: <TotalTokensWidget totalTokens={totalTokens} />,
     inputTokens: <InputTokensWidget inputTokens={inputTokens} inputCost={inputCost} inputTokenPrice={inputTokenPrice} />,
@@ -379,7 +385,7 @@ export default function Dashboard() {
     avgTokens: <AverageTokensWidget averageTokensPerTurn={averageTokensPerTurn} />,
     mostExpensiveTurn: <MostExpensiveTurnWidget mostExpensiveTurn={mostExpensiveTurn} />,
     tokenUsageChart: <TokenUsageChartWidget chartData={chartData} lineVisibility={lineVisibility} timeframe={timeframe} setTimeframe={setTimeframe} />,
-    recentActivity: <RecentActivityWidget allMessages={allMessages} searchTerm={searchTerm} setSearchTerm={setSearchTerm} expandedRow={expandedRow} setExpandedRow={setExpandedRow} tokenThreshold={tokenThreshold} recentMessageIds={recentMessageIds} />,
+    recentActivity: <RecentActivityWidget allMessages={filteredMessages} searchTerm={searchTerm} setSearchTerm={setSearchTerm} expandedRow={expandedRow} setExpandedRow={setExpandedRow} tokenThreshold={tokenThreshold} recentMessageIds={recentMessageIds} />,
   };
 
   return (
