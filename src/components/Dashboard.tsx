@@ -348,12 +348,28 @@ export default function Dashboard() {
   const outputCost = (outputTokens / 1000000) * outputTokenPrice;
   const totalCost = inputCost + outputCost;
 
-  const chartData = [...messagesWithTokens].reverse().map((message) => ({
-    name: new Date(message.timestamp).toLocaleTimeString(),
-    total: message.tokens.total,
-    input: message.tokens.input,
-    output: message.tokens.output,
-  }));
+  const chartData = useMemo(() => {
+    const now = new Date();
+    let filteredMessages = [...messagesWithTokens];
+
+    if (timeframe !== 'all') {
+      const msMap: { [key: string]: number } = {
+        '15m': 15 * 60 * 1000,
+        '30m': 30 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '24h': 24 * 60 * 60 * 1000,
+      };
+      const cutoff = new Date(now.getTime() - msMap[timeframe]);
+      filteredMessages = filteredMessages.filter(m => new Date(m.timestamp) >= cutoff);
+    }
+
+    return filteredMessages.reverse().map((message) => ({
+      name: new Date(message.timestamp).toLocaleTimeString(),
+      total: message.tokens.total,
+      input: message.tokens.input,
+      output: message.tokens.output,
+    }));
+  }, [messagesWithTokens, timeframe]);
 
   const widgetComponents: { [key: string]: React.ReactNode } = {
     totalTokens: <TotalTokensWidget totalTokens={totalTokens} />,
