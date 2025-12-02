@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import io from 'socket.io-client';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
@@ -179,19 +179,15 @@ const RecentActivityWidget = ({ allMessages, searchTerm, setSearchTerm, expanded
 
 export default function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [files, setFiles] = useState<string[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>('');
-  const [selectedFile, setSelectedFile] = useState<string>('');
-  const [fileContent, setFileContent] = useState<Message[]>([]);
+  const [sessionData, setSessionData] = useState<{ [filename: string]: Message[] }>({});
   const [sessionsLoading, setSessionsLoading] = useState<boolean>(true);
-  const [filesLoading, setFilesLoading] = useState<boolean>(false);
   const [contentLoading, setContentLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
   const [tokenThreshold, setTokenThreshold] = useState<number>(35000);
   const [inputTokenPrice, setInputTokenPrice] = useState<number>(0.625); // Price per 1 million tokens
   const [outputTokenPrice, setOutputTokenPrice] = useState<number>(5.00); // Price per 1 million tokens
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddWidgetOpen, setIsAddWidgetOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -202,7 +198,6 @@ export default function Dashboard() {
     input: true,
     output: true,
   });
-  const settingsRef = useRef<HTMLDivElement>(null);
 
   const initialLayouts = {
     lg: [
@@ -270,73 +265,71 @@ export default function Dashboard() {
       });
   }, []);
 
-  useEffect(() => {
-    if (selectedSession) {
-      setFilesLoading(true);
-      fetch(`/api/sessions/${selectedSession}?files=true`)
-        .then((res) => res.json())
-        .then((data) => {
-          setFiles(data);
-          if (data.length > 0 && !selectedFile) {
-            setSelectedFile(data[0]);
-          }
-          setFilesLoading(false);
-        })
-        .catch(() => {
-          setError('Failed to fetch files.');
-          setFilesLoading(false);
-        });
-    }
-  }, [selectedSession]);
-
+  // Fetch initial session data (all files)
   useEffect(() => {
     if (selectedSession) {
       setContentLoading(true);
-      let url = `/api/sessions/${selectedSession}`;
-      if (selectedFile) {
-        url = `/api/sessions/${selectedSession}/${selectedFile}`;
-      }
-
-      fetch(url)
+      fetch(`/api/sessions/${selectedSession}`)
         .then((res) => res.json())
         .then((data) => {
-          setFileContent(data.messages || []);
+          if (data.files) {
+            setSessionData(data.files);
+          } else {
+             // Fallback or empty if API fails structure
+             setSessionData({});
+          }
           setContentLoading(false);
         })
         .catch(() => {
-          setError('Failed to fetch file content.');
+          setError('Failed to fetch session content.');
           setContentLoading(false);
         });
 
-      if (selectedFile) {
-        const filePath = `${selectedSession}/${selectedFile}`;
-        socket.emit('watchFile', filePath);
-      }
+      // Watch the session via socket
+      socket.emit('watchSession', selectedSession);
     }
-  }, [selectedSession, selectedFile]);
+  }, [selectedSession]);
 
+  // Listen for file updates within the session
   useEffect(() => {
-    socket.on('fileUpdate', (content) => {
-      const newMessages = JSON.parse(content).messages || [];
-      setFileContent(currentMessages => {
-        if (newMessages.length > currentMessages.length) {
-          const newMessage = newMessages[newMessages.length - 1];
-          setRecentMessageIds(prev => [...prev, newMessage.id]);
-          setTimeout(() => {
-            setRecentMessageIds(prev => prev.filter(id => id !== newMessage.id));
-          }, 3000); // Highlight for 3 seconds
-        }
-        return newMessages;
-      });
+    socket.on('sessionFileUpdate', ({ fileName, content }: { fileName: string, content: string }) => {
+      try {
+        const parsedContent = JSON.parse(content);
+        const newMessages = parsedContent.messages || [];
+        
+        setSessionData(currentData => {
+           // Check if there are new messages to highlight
+           const oldMessages = currentData[fileName] || [];
+           if (newMessages.length > oldMessages.length) {
+              const newMessage = newMessages[newMessages.length - 1];
+              setRecentMessageIds(prev => [...prev, newMessage.id]);
+              setTimeout(() => {
+                setRecentMessageIds(prev => prev.filter(id => id !== newMessage.id));
+              }, 3000);
+           }
+           
+           return {
+             ...currentData,
+             [fileName]: newMessages
+           };
+        });
+      } catch (e) {
+        console.error("Failed to parse update for file:", fileName, e);
+      }
     });
 
     return () => {
-      socket.off('fileUpdate');
+      socket.off('sessionFileUpdate');
     };
   }, []);
 
-  const allMessages = [...fileContent].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  const messagesWithTokens = fileContent.filter((message) => message.tokens);
+  // Flatten messages from all files and sort by timestamp
+  const allMessages = useMemo(() => {
+    const messages = Object.values(sessionData).flat();
+    return messages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [sessionData]);
+
+  const messagesWithTokens = allMessages.filter((message) => message.tokens);
 
   const totalTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.total, 0);
   const inputTokens = messagesWithTokens.reduce((acc, message) => acc + message.tokens.input, 0);
@@ -382,10 +375,8 @@ export default function Dashboard() {
             <option value="">{sessionsLoading ? 'Loading...' : 'Select a session'}</option>
             {sessions.map((session) => (<option key={session.name} value={session.name}>{session.name}</option>))}
           </select>
-          <select className="bg-gray-700 p-2 rounded" value={selectedFile} onChange={(e) => setSelectedFile(e.target.value)} disabled={!selectedSession || filesLoading}>
-            <option value="">{filesLoading ? 'Loading...' : 'Select a file'}</option>
-            {files.map((file) => (<option key={file} value={file}>{file}</option>))}
-          </select>
+          {/* File selector removed as we now show aggregated session view */}
+          
           <button
             className={`p-2 rounded ${isLayoutEditable ? 'bg-blue-500' : 'bg-gray-700'}`}
             onClick={() => setIsLayoutEditable(!isLayoutEditable)}

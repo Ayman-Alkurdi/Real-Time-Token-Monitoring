@@ -10,7 +10,7 @@ export async function GET() {
     const dirents = await fs.readdir(sessionsDir, { withFileTypes: true });
     const directories = await Promise.all(
       dirents
-        .filter((dirent) => dirent.isDirectory())
+        .filter((dirent) => dirent.isDirectory() && dirent.name !== 'bin')
         .map(async (dirent) => {
           const fullPath = path.join(sessionsDir, dirent.name);
           const stats = await fs.stat(fullPath);

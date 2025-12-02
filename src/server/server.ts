@@ -24,13 +24,34 @@ io.on('connection', (socket) => {
     if (watcher) {
       watcher.close();
     }
-    const fullPath = path.join(os.homedir(), '.gemini', 'tmp', filePath.replace('/', '/chats/'));
+    const sessionDir = process.env.MONITORING_DIR || path.join(os.homedir(), '.gemini', 'tmp');
+    const fullPath = path.join(sessionDir, filePath.replace('/', '/chats/'));
     console.log('Watching file:', fullPath); // Added for debugging
     watcher = chokidar.watch(fullPath);
     watcher.on('change', async () => {
       console.log('File changed:', fullPath); // Added for debugging
       const content = await fs.readFile(fullPath, 'utf-8');
       socket.emit('fileUpdate', content);
+    });
+  });
+
+  socket.on('watchSession', async (sessionId) => {
+    if (watcher) {
+      watcher.close();
+    }
+    const baseDir = process.env.MONITORING_DIR || path.join(os.homedir(), '.gemini', 'tmp');
+    const sessionDir = path.join(baseDir, sessionId, 'chats');
+    console.log('Watching session directory:', sessionDir);
+    watcher = chokidar.watch(sessionDir);
+    
+    watcher.on('all', async (event, filePath) => {
+      // console.log(`Event: ${event} on ${filePath}`);
+      if (['add', 'change'].includes(event) && filePath.endsWith('.json')) {
+        console.log(`File ${event}:`, filePath);
+        const content = await fs.readFile(filePath, 'utf-8');
+        const fileName = path.basename(filePath);
+        socket.emit('sessionFileUpdate', { fileName, content });
+      }
     });
   });
 

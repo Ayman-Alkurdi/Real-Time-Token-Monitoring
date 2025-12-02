@@ -35,17 +35,17 @@ export async function GET(
       return NextResponse.json(files);
     }
 
-    let allMessages: any[] = [];
+    const filesContent: { [key: string]: any[] } = {};
     for (const file of files) {
       const filePath = path.join(sessionDir, file);
       const content = await fs.readFile(filePath, 'utf-8');
       const jsonContent = JSON.parse(content);
       if (jsonContent.messages) {
-        allMessages = allMessages.concat(jsonContent.messages);
+        filesContent[file] = jsonContent.messages;
       }
     }
 
-    return NextResponse.json({ messages: allMessages });
+    return NextResponse.json({ files: filesContent });
 
   } catch (error) {
     return NextResponse.json({ error: 'Failed to read session directory' }, { status: 500 });
