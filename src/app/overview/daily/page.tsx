@@ -4,6 +4,8 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+import { settings } from '../../../settings';
+
 interface Session {
   name: string;
   totalTokens: number;
@@ -34,15 +36,22 @@ export default function DailyOverviewPage() {
         const sessionDataPromises = sessions.map(async (session) => {
           const sessionRes = await fetch(`/api/sessions/${session.name}`);
           const sessionDetails = await sessionRes.json();
-          const messages = sessionDetails.messages || [];
+          
+          let messages: any[] = [];
+          if (sessionDetails.files) {
+            messages = Object.values(sessionDetails.files).flat();
+          } else if (sessionDetails.messages) {
+            messages = sessionDetails.messages;
+          }
+
           const messagesWithTokens = messages.filter((m: any) => m.tokens);
 
           const totalTokens = messagesWithTokens.reduce((acc: number, m: any) => acc + m.tokens.total, 0);
           const inputTokens = messagesWithTokens.reduce((acc: number, m: any) => acc + m.tokens.input, 0);
           const outputTokens = messagesWithTokens.reduce((acc: number, m: any) => acc + m.tokens.output, 0);
 
-          const inputCost = (inputTokens / 1000000) * 0.625;
-          const outputCost = (outputTokens / 1000000) * 5.00;
+          const inputCost = (inputTokens / 1000000) * settings.inputTokenPrice;
+          const outputCost = (outputTokens / 1000000) * settings.outputTokenPrice;
           const totalCost = inputCost + outputCost;
 
           return {
