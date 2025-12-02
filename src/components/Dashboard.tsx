@@ -6,6 +6,7 @@ import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { settings } from '../settings';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const socket = io('http://localhost:3001');
@@ -186,8 +187,8 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'15m' | '30m' | '1h' | '24h' | 'all'>('all');
   const [tokenThreshold, setTokenThreshold] = useState<number>(35000);
-  const [inputTokenPrice, setInputTokenPrice] = useState<number>(0.625); // Price per 1 million tokens
-  const [outputTokenPrice, setOutputTokenPrice] = useState<number>(5.00); // Price per 1 million tokens
+  const [inputTokenPrice, setInputTokenPrice] = useState<number>(settings.inputTokenPrice);
+  const [outputTokenPrice, setOutputTokenPrice] = useState<number>(settings.outputTokenPrice);
   const [isAddWidgetOpen, setIsAddWidgetOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
