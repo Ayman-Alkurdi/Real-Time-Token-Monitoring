@@ -2,17 +2,6 @@
 
 This project is a monitoring application designed to help you understand and optimize your token consumption when using the Gemini CLI. By visualizing the token count of your requests, you can identify patterns and adopt strategies to reduce costs and improve efficiency.
 
-## Project Showcase
-
-Here's a quick look at the application in action:
-
-### Before
-
-![Before](docs/before.png)
-
-### After
-
-![After](docs/after.png)
 
 ## How It Works
 
